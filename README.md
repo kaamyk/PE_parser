@@ -13,6 +13,8 @@ It has a BPF Type Format (BTF) by default.
 **BTF** : 
 BTF describes the the data types, functions and eBPF's and kernel's structures.
 
+**ACL** :
+*Definition to do*
 ### The setup
 ```sh
 # Is virtualization supported by CPU
@@ -21,7 +23,7 @@ egrep -c '(vmx|svm)' /proc/cpuinfo
 # Install packages
 sudo apt update
 sudo apt install qemu-system-x86 libvirt-daemon-system \
-libvirt-clients virt-manager virtinst cpu-checker
+libvirt-clients virt-manager virtinst cpu-checker virt-viewer
 
 # Add the user to groups
 sudo adduser "$USER" libvirt
@@ -54,20 +56,53 @@ virsh pool-autostart poolName
 # The size shown is not allocated, it is just usable for futur machines
 virsh pool-info poolName
 ```
-#### Permissions
+#### Network
+Check if network started:
 ```sh
-# Check the rights of each node in the path
+virsh -c qemu:///system net-list default
+```
+Start the network:
+```sh
+virsh -c qemu:///system net-start default
+```
+Set autostart:
+```sh
+virsh -c qemu:///system net-autostart default
+```
+Now check again.  
+#### Permissions
+Check if the kernel handles ACL:
+```sh
+grep ACL /boot/config-$(uname -r)
+```
+If ACL specified the 'ls -l' output has a '+':
+```sh
+ls -l file
+```
+Check the rights of each node in the path:
+```sh
 # Each dir needs 'x' bit for "others"
 namei -l "$LOCATION/libvirt-images"
+# getacl prints the permisions:
+getacl file
 ```
 
+Give the ACL permissions:
+```sh
+sudo setfacl -m u:libvirt-qemu:x /location/of/pool
+```
+
+#### Console view
+sudo apt install virt-viewer
+
+#### Installation
 Get the latest stable Fedora.  
 At the moment this is **Fedora Workstation 44**.  
 ```sh
-cd /your/target/location
 wget -P ~/Downloads https://download.fedoraproject.org/pub/fedora/linux/releases/44/Workstation/x86_64/iso/Fedora-Workstation-Live-44-1.7.x86_64.iso
-virt-install --name fedora-ebpf --memory 6144 --vcpus 4 --disk size=40,format=qcow2 \
---cdrom ~/Downloads/Fedora-Workstation-Live-44-1.7.x86_64.iso \
---os-variant fedora-unknown --network network=default
+cd /your/target/location
+sudo virt-install --connect qemu:///system --name fedora-ebpf \
+  --memory 6144 --vcpus 4 --disk pool=ssdpool,size=40,format=qcow2 \
+  --cdrom /mnt/hdd-storage/ISOs/Fedora-Workstation-Live-44-1.7.x86_64.iso \
+  --os-variant fedora-unknown --network network=default
 ```
-
