@@ -31,7 +31,7 @@ sudo adduser "$USER" kvm
 
 # Then delog / relog to the user session
 
-# Check intallation
+# Check installation
 kvm-ok                  # expected : KVM acceleration can be used
 virsh list --all        # expected : empty, no error
 sudo virsh net-list --all    # expected : default network active. sudo needed for network
@@ -59,7 +59,7 @@ virsh pool-info poolName
 #### Network
 Check if network started:
 ```sh
-virsh -c qemu:///system net-list default
+virsh -c qemu:///system net-list --all
 ```
 Start the network:
 ```sh
