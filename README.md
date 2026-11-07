@@ -95,7 +95,7 @@ sudo setfacl -m u:libvirt-qemu:x /location/of/pool
 #### Console view
 sudo apt install virt-viewer
 
-#### Installation
+### Installation
 Get the latest stable Fedora.  
 At the moment this is **Fedora Workstation 44**.  
 ```sh
@@ -105,4 +105,70 @@ sudo virt-install --connect qemu:///system --name fedora-ebpf \
   --memory 6144 --vcpus 4 --disk pool=ssdpool,size=40,format=qcow2 \
   --cdrom /mnt/hdd-storage/ISOs/Fedora-Workstation-Live-44-1.7.x86_64.iso \
   --os-variant fedora-unknown --network network=default
+```
+In the launched VM, follow the instruction to fully install the OS on the virtual disk.  
+Stop the VM:
+```sh
+virsh -c qemu:///system start fedora-ebf
+```
+Check that the ISO is no longer attached:
+```sh
+# from host
+virsh -c qemu :///system domblklist fedora-ebpf
+# if not
+virsh -c qemu:///system change-media fedora-ebpf sda --eject --config
+
+# Start the VM
+virsh -c qemu:///system start fedora-ebf
+# in VM
+# Update & update SSH
+sudo dnf upgrade --refresh -y
+sudo reboot
+```
+After the reboot:
+```sh 
+uname -r													# Note the kernel version
+sudo systemctl enable --now sshd
+systemctl is-active sshd					# expected: active
+ip -4 addr show										# Note the IP address
+```
+From the host:
+```sh
+virsh -c qemu:///system domifaddr fedora-ebpf
+ssh bibi@<IP_ADDR>
+```
+The VM is setup, let's save it.
+```sh
+virsh -c qemu:///system snapshot-create-as fedora-ebpf --name base-updated
+virsh -c qemu:///system snapshot-list fedora-ebpf
+virsh -c qemu:///system start fedora-ebpf
+```
+
+### Install packages
+```sh
+# Required
+sudo dnf install -y clang llvm libbpf-devel bpftool kernel-devel-$(uname -r) \
+elfutils-libelf-devel zlib-devel \
+gcc make git pkgconf-pkg-config
+# Optional 
+sudo dnf install -y strace jq tmux nmap-ncat perf
+
+
+# Verify the installation
+# must match the output of uname -r
+rpm -q kernel-devel
+# must exist: it is the BTF info CO-RE relies on
+ls -l /sys/kernel/btf/vmlinux
+clang --version
+# expected: bpf, bpfel, bpfeb
+clang --print-targets | grep -i bpf
+# should mention libbpf and the features
+bpftool version
+# libbpf version
+pkg-config --modversion libbpf
+```
+
+### Generate vmlinux header file
+```sh
+bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h
 ```
